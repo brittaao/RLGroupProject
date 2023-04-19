@@ -51,11 +51,10 @@ if __name__ == '__main__':
         while not terminated:
             
             # TODO: Get action from DQN.
-            action = dqn.act(obs).item()
-            print(action)
+            action = dqn.act(obs)
             
             # Act in the true environment.
-            next_obs, reward, terminated, truncated, info = env.step(action)
+            next_obs, reward, terminated, truncated, info = env.step(action.item())
 
             # Preprocess incoming observation.
             if not terminated:
@@ -63,6 +62,11 @@ if __name__ == '__main__':
             
             # TODO: Add the transition to the replay memory. Remember to convert
             #       everything to PyTorch tensors!
+            print(obs, type(obs), obs.shape)
+            print(next_obs, type(next_obs), next_obs.shape)
+            print(action, type(action), action.shape)
+            reward = torch.tensor([reward]).unsqueeze(0)
+            print("reward",reward, type(reward), reward.shape)
             memory.push(obs, action, next_obs, reward)
             # TODO: Run DQN.optimize() every env_config["train_frequency"] steps.
             if counter%env_config["train_frequency"] == 0:

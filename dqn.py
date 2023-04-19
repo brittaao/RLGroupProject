@@ -75,32 +75,30 @@ class DQN(nn.Module):
         if self.eps_start < self.eps_end:
             self.eps_start = self.eps_end
         
-        #print(observation.type())
-        #observation = torch.from_numpy(observation) # Convert np.array --> tensor
         if random.random() > self.eps_start:
-            #print("exploit")
             return_tensor = self.forward(observation) # tensor([1,2])
-            #print(return_tensor)
-            return torch.argmax(return_tensor, dim=1).unsqueeze(0)   # tensor[1] -> tensor([1,1])
+            return torch.argmax(return_tensor, dim=1)   # Returns tensor size (1 x 1)
          
                                            
         else:
-            #print("Explore")
-            #print(torch.IntTensor([[random.randint(0, self.n_actions-1)]]).unsqueeze(0))
-            return torch.IntTensor([[random.randint(0, self.n_actions-1)]]).unsqueeze(0) # tensor([0]) scalar --> 
+            return torch.IntTensor([[random.randint(0, self.n_actions-1)]]) # Returns IntTensor size (1 x 1)
                                                 
 def optimize(dqn, target_dqn, memory, optimizer):
     """This function samples a batch from the replay buffer and optimizes the Q-network."""
     # If we don't have enough transitions stored yet, we don't train.
     if len(memory) < dqn.batch_size:
         return
-    else:
-        target_samples = memory.samples()
 
     # TODO: Sample a batch from the replay memory and concatenate so that there are
     #       four tensors in total: observations, actions, next observations and rewards.
     #       Remember to move them to GPU if it is available, e.g., by using Tensor.to(device).
     #       Note that special care is needed for terminal transitions!
+    samples = memory.sample(dqn.batch_size)                      # Returns tuple batchsize x ((s),(a),(s'),(r))
+    obs_tensor = torch.cat(samples[0], dim= 0).to(device)        # Each row contains 4 values hence we have tensor size (32 x 4)
+    action_tensor = torch.cat(samples[1], dim= 0).to(device)     # Tensor size (32 x 1)
+    next_obs_tensor = torch.cat(samples[2], dim=0).to(device)    # Tensor size (32 x 4)
+    reward_tensor = torch.cat(samples[3], dim=0).to(device)      # Tensor size (32 x 1) 
+
 
     # TODO: Compute the current estimates of the Q-values for each state-action
     #       pair (s,a). Here, torch.gather() is useful for selecting the Q-values
@@ -122,42 +120,6 @@ def optimize(dqn, target_dqn, memory, optimizer):
 
 
 
-
-    """
-    batch = Transition(*zip(*transition))
-     # Compute a mask of non-final states and concatenate the batch elements
-    non_final_mask = torch.ByteTensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)))
-    # We don't want to backprop through the expected action values and volatile
-    # will save us on temporarily changing the model parameters'
-    # requires_grad to False!
-    non_final_next_states = torch.Variable(torch.cat([s for s in batch.next_state
-                                                if s is not None]),
-                                     volatile=True)
-    state_batch = torch.Variable(torch.cat(batch.state))
-    action_batch = torch.Variable(torch.cat(batch.action))
-    reward_batch = torch.Variable(torch.cat(batch.reward))
-    """
-    # TODO: Compute the current estimates of the Q-values for each state-action
-    #       pair (s,a). Here, torch.gather() is useful for selecting the Q-values
-    #       corresponding to the chosen actions.
-    # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
-    # columns of actions taken
-    #        state_action_values = dqn(state_batch).gather(1, action_batch)
-
-    # TODO: Compute the Q-value targets. Only do this for non-terminal transitions!
-    # Compute V(s_{t+1}) for all next states.
-    #       next_state_values = torch.Variable(torch.zeros(dqn.batch_size).type(torch.FloatTensor))
-    #       next_state_values[non_final_mask] = dqn(non_final_next_states).max(1)[0]
-
-    """
-    # Now, we don't want to mess up the loss with a volatile flag, so let's
-    # clear it. After this, we'll just end up with a Variable that has
-    # requires_grad=False
-    next_state_values.volatile = False
-    # Compute the expected Q values
-    expected_state_action_values = (next_state_values * dqn.gamma) + reward_batch
-    """
 
 
 
