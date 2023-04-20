@@ -59,15 +59,14 @@ if __name__ == '__main__':
             # Preprocess incoming observation.
             if not terminated:
                 next_obs = preprocess(next_obs, env=args.env).unsqueeze(0)
+            else:
+                next_obs = None
             
             # TODO: Add the transition to the replay memory. Remember to convert
             #       everything to PyTorch tensors!
-            print(obs, type(obs), obs.shape)
-            print(next_obs, type(next_obs), next_obs.shape)
-            print(action, type(action), action.shape)
-            reward = torch.tensor([reward]).unsqueeze(0)
-            print("reward",reward, type(reward), reward.shape)
-            memory.push(obs, action, next_obs, reward)
+
+            reward = torch.tensor([reward], device=device) # Convert reward to tensor
+            memory.push(obs, action, next_obs, reward)   # Push all tensors to memory
             # TODO: Run DQN.optimize() every env_config["train_frequency"] steps.
             if counter%env_config["train_frequency"] == 0:
                 optimize(dqn, target_dqn, memory, optimizer)

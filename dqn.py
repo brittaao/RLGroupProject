@@ -68,7 +68,6 @@ class DQN(nn.Module):
         #       the input would be a [32, 4] tensor and the output a [32, 1] tensor.
         # TODO: Implement epsilon-greedy exploration.
         
-
         # anneal epsilon until eps_end
         self.eps_start -= 1/self.anneal_length
 
@@ -77,11 +76,10 @@ class DQN(nn.Module):
         
         if random.random() > self.eps_start:
             return_tensor = self.forward(observation) # tensor([1,2])
-            return torch.argmax(return_tensor, dim=1)   # Returns tensor size (1 x 1)
-         
-                                           
+            return torch.argmax(return_tensor, dim=1).unsqueeze(0)   # Returns tensor size (1 x 1)
+                                        
         else:
-            return torch.IntTensor([[random.randint(0, self.n_actions-1)]]) # Returns IntTensor size (1 x 1)
+            return torch.tensor([[random.randint(0, self.n_actions-1)]], device=device) # Returns tensor size (1 x 1)
                                                 
 def optimize(dqn, target_dqn, memory, optimizer):
     """This function samples a batch from the replay buffer and optimizes the Q-network."""
@@ -94,16 +92,28 @@ def optimize(dqn, target_dqn, memory, optimizer):
     #       Remember to move them to GPU if it is available, e.g., by using Tensor.to(device).
     #       Note that special care is needed for terminal transitions!
     samples = memory.sample(dqn.batch_size)                      # Returns tuple batchsize x ((s),(a),(s'),(r))
-    obs_tensor = torch.cat(samples[0], dim= 0).to(device)        # Each row contains 4 values hence we have tensor size (32 x 4)
-    action_tensor = torch.cat(samples[1], dim= 0).to(device)     # Tensor size (32 x 1)
-    next_obs_tensor = torch.cat(samples[2], dim=0).to(device)    # Tensor size (32 x 4)
-    reward_tensor = torch.cat(samples[3], dim=0).to(device)      # Tensor size (32 x 1) 
+    transitions = Transition(*samples)
+    mask = torch.tensor(tuple(map(lambda state: state is not None, # Create mask, if next state == None --> False else True
+                                          transitions.next_state)), device=device, dtype=torch.bool) 
+    non_term_next_states = torch.cat([state for state in transitions.next_state
+                                                if state is not None])
+    
+    state_tensor = torch.cat(transitions.state).to(device)        # Each row contains 4 values hence we have tensor size (32 x 4)
+    action_tensor = torch.cat(transitions.action).to(device)     # Tensor size (32 x 1)
+    reward_tensor = torch.cat(transitions.reward).to(device)      # Tensor size (32 x 1) 
 
-
+    # Compute q values with DQN NN
+    q_values = dqn(state_tensor).gather(1, action_tensor)
+    
+    # Compute q values for target-DQN NN
+    q_value_targets = torch.zeros(target_dqn.batch_size, device=device)
+    with torch.no_grad():
+        q_value_targets[mask] = target_dqn(non_term_next_states).max(1)[0]
+    q_value_targets = reward_tensor+(target_dqn.gamma*q_value_targets)
+    
     # TODO: Compute the current estimates of the Q-values for each state-action
     #       pair (s,a). Here, torch.gather() is useful for selecting the Q-values
     #       corresponding to the chosen actions.
-    
     # TODO: Compute the Q-value targets. Only do this for non-terminal transitions!
     # Compute loss.
     loss = F.mse_loss(q_values.squeeze(), q_value_targets)
