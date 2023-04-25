@@ -1,4 +1,5 @@
 import argparse
+import csv
 
 import gymnasium as gym
 import torch
@@ -15,6 +16,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--env', choices=['CartPole-v1'], default='CartPole-v1')
 parser.add_argument('--evaluate_freq', type=int, default=25, help='How often to run evaluation.', nargs='?')
 parser.add_argument('--evaluation_episodes', type=int, default=5, help='Number of evaluation episodes.', nargs='?')
+parser.add_argument('--nmodel', type=int, help='Name of the model.', nargs='?')
 
 # Hyperparameter configurations for different environments. See config.py.
 ENV_CONFIGS = {
@@ -27,6 +29,7 @@ if __name__ == '__main__':
     # Initialize environment and config.
     env = gym.make(args.env)
     env_config = ENV_CONFIGS[args.env]
+    nmodel = args.nmodel
 
     # Initialize deep Q-networks.
     dqn = DQN(env_config=env_config).to(device)
@@ -40,15 +43,17 @@ if __name__ == '__main__':
 
     # Keep track of best evaluation mean return achieved so far.
     best_mean_return = -float("Inf")
+    L = []
 
     for episode in range(env_config['n_episodes']):
         terminated = False
+        truncated = False
         obs, info = env.reset()
 
         counter = 0 # Counter for frequencies
 
         obs = preprocess(obs, env=args.env).unsqueeze(0)
-        while not terminated:
+        while not terminated and not truncated:
             
             # TODO: Get action from DQN.
             action = dqn.act(obs)
@@ -81,6 +86,7 @@ if __name__ == '__main__':
         # Evaluate the current agent.
         if episode % args.evaluate_freq == 0:
             mean_return = evaluate_policy(dqn, env, env_config, args, n_episodes=args.evaluation_episodes)
+            L.append(mean_return)
             print(f'Episode {episode+1}/{env_config["n_episodes"]}: {mean_return}')
 
             # Save current agent if it has the best performance so far.
@@ -88,7 +94,10 @@ if __name__ == '__main__':
                 best_mean_return = mean_return
 
                 print('Best performance so far! Saving model.')
-                torch.save(dqn, f'models/{args.env}_best.pt')
+                torch.save(dqn, f'models/{args.env}_best_model{nmodel}.pt')
         
     # Close environment after training is completed.
+    with open(f'./train_results/model{nmodel}.csv', 'w') as f: 
+        write = csv.writer(f)
+        write.writerow(L)
     env.close()
