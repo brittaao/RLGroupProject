@@ -8,6 +8,7 @@ import config
 from utils import preprocess
 from evaluate import evaluate_policy
 from dqn import DQN, ReplayMemory, optimize
+from gymnasium.wrappers import AtariPreprocessing
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -18,18 +19,26 @@ parser.add_argument('--evaluation_episodes', type=int, default=5, help='Number o
 
 # Hyperparameter configurations for different environments. See config.py.
 ENV_CONFIGS = {
-    'CartPole-v1': config.CartPole
+    'CartPole-v1': config.CartPole,
+    'ALE/Pong-v5': config.Pong
 }
+# Set to True if Pong else False.
+Pong = False
 
 if __name__ == '__main__':
     args = parser.parse_args()
 
     # Initialize environment and config.
     env = gym.make(args.env)
+    if Pong:
+        env = AtariPreprocessing(env, screen_size=84, grayscale_obs=True, frame_skip=1, noop_max=30)
     env_config = ENV_CONFIGS[args.env]
 
     # Initialize deep Q-networks.
-    dqn = DQN(env_config=env_config).to(device)
+    if Pong:
+        dqn = DQN(env_config=env_config, Pong=True).to(device)
+    else:
+        dqn = DQN(env_config=env_config).to(device)
     # TODO: Create and initialize target Q-network.
     target_dqn = copy.deepcopy(dqn).to(device)
     # Create replay memory.
@@ -40,33 +49,44 @@ if __name__ == '__main__':
 
     # Keep track of best evaluation mean return achieved so far.
     best_mean_return = -float("Inf")
-
     for episode in range(env_config['n_episodes']):
         terminated = False
         obs, info = env.reset()
 
         counter = 0 # Counter for frequencies
 
-        obs = preprocess(obs, env=args.env).unsqueeze(0)
+        obs = preprocess(obs, env=args.env)
+        if Pong:
+                obs_stack = torch.cat(env_config['observation_stack_size'] * [obs]).unsqueeze(0).to(device)
+        
         while not terminated:
-            
+        
             # TODO: Get action from DQN.
-            action = dqn.act(obs)
+            if Pong:
+                action = dqn.act(obs_stack)            
+                next_obs, reward, terminated, truncated, info = env.step(dqn.convert_action[action.item()])
+            else:
+                action = dqn.act(obs)
+                next_obs, reward, terminated, truncated, info = env.step(action.item())
             
-            # Act in the true environment.
-            next_obs, reward, terminated, truncated, info = env.step(action.item())
-
             # Preprocess incoming observation.
             if not terminated:
-                next_obs = preprocess(next_obs, env=args.env).unsqueeze(0)
+                next_obs = preprocess(next_obs, env=args.env)
+                if Pong:
+                    next_obs_stack = torch.cat((obs_stack[:, 1:, ...], next_obs.unsqueeze(1)), dim=1).to(device)
             else:
                 next_obs = None
+                if Pong:
+                    next_obs_stack = None
             
             # TODO: Add the transition to the replay memory. Remember to convert
             #       everything to PyTorch tensors!
 
             reward = torch.tensor([reward], device=device) # Convert reward to tensor
-            memory.push(obs, action, next_obs, reward)   # Push all tensors to memory
+            if Pong:
+                memory.push(obs_stack,action,next_obs_stack,reward)
+            else:
+                memory.push(obs, action, next_obs, reward)   # Push all tensors to memory
             # TODO: Run DQN.optimize() every env_config["train_frequency"] steps.
             if counter%env_config["train_frequency"] == 0:
                 optimize(dqn, target_dqn, memory, optimizer)
@@ -75,8 +95,12 @@ if __name__ == '__main__':
             if counter%env_config["target_update_frequency"] == 0:
                 target_dqn = copy.deepcopy(dqn)
             
-            obs = next_obs
+            if Pong:
+                obs_stack = next_obs_stack
+            else:
+                obs = next_obs
             counter += 1
+            
             
         # Evaluate the current agent.
         if episode % args.evaluate_freq == 0:

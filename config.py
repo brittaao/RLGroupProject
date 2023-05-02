@@ -29,3 +29,18 @@ CartPole = {
     'anneal_length': 10**4,
     'n_actions': 2,
 }
+# Hyperparameters for Pong-v5
+Pong = {
+    'observation_stack_size': 4,
+    'memory_size': 10000,
+    'n_episodes': 1000,
+    'batch_size': 32,
+    'target_update_frequency': 1000,
+    'train_frequency': 4,
+    'gamma': 0.99,
+    'lr': 1e-4,
+    'eps_start': 1.0,
+    'eps_end': 0.01,
+    'anneal_length': 10**6,
+    'n_actions': 2,
+}

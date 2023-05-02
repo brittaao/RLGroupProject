@@ -20,6 +20,7 @@ parser.set_defaults(save_video=False)
 # Hyperparameter configurations for different environments. See config.py.
 ENV_CONFIGS = {
     'CartPole-v1': config.CartPole,
+    'ALE/Pong-v5': config.Pong
 }
 
 
@@ -28,18 +29,25 @@ def evaluate_policy(dqn, env, env_config, args, n_episodes, render=False, verbos
     total_return = 0
     for i in range(n_episodes):
         obs, info = env.reset()
-        obs = preprocess(obs, env=args.env).unsqueeze(0)
-
+        obs = preprocess(obs, env=args.env)
+        if dqn.pong:
+            obs_stack = torch.cat(env_config['observation_stack_size'] * [obs]).unsqueeze(0).to(device)
         terminated = False
         episode_return = 0
 
         while not terminated:
             if render:
                 env.render()
+            if dqn.pong:
+                action = dqn.act(obs_stack, exploit=True).item()
+                obs, reward, terminated, truncated, info = env.step(dqn.convert_action[action])
+            else:
+                action = dqn.act(obs, exploit=True).item()
+                obs, reward, terminated, truncated, info = env.step(action)
+            obs = preprocess(obs, env=args.env)
 
-            action = dqn.act(obs, exploit=True).item()
-            obs, reward, terminated, truncated, info = env.step(action)
-            obs = preprocess(obs, env=args.env).unsqueeze(0)
+            if dqn.pong:
+                obs_stack = torch.cat((obs_stack[:, 1:, ...], obs.unsqueeze(1)), dim=1).to(device)
 
             episode_return += reward
         

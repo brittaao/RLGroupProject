@@ -34,7 +34,7 @@ class ReplayMemory:
 
 
 class DQN(nn.Module):
-    def __init__(self, env_config):
+    def __init__(self, env_config, Pong=False):
         super(DQN, self).__init__()
 
         # Save hyperparameters needed in the DQN class.
@@ -44,21 +44,35 @@ class DQN(nn.Module):
         self.eps_end = env_config["eps_end"]
         self.anneal_length = env_config["anneal_length"]
         self.n_actions = env_config["n_actions"]
+        self.pong = Pong
 
-        self.fc1 = nn.Linear(4, 256)
-        self.fc2 = nn.Linear(256, self.n_actions)
-
-        self.relu = nn.ReLU()
-        self.flatten = nn.Flatten()
+        # If Pong -> use convolutional NN
+        if self.pong == True:
+            self.convert_action = {0:2,1:3} # Converts actions to fit Pong
+            self.layer_stack = nn.Sequential(
+                nn.Conv2d(env_config['observation_stack_size'], 32, kernel_size=8, stride=4, padding=0),
+                nn.ReLU(),
+                nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
+                nn.ReLU(),
+                nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
+                nn.ReLU(),
+                nn.Flatten(),
+                nn.Linear(3136, 512),
+                nn.ReLU(),
+                nn.Linear(512, self.n_actions)
+            )
+        else:
+            self.layer_stack = nn.Sequential(
+                nn.Linear(4,256),
+                nn.ReLU(),
+                nn.Linear(256, self.n_actions)
+            )
     
       
     
     def forward(self, x):
         """Runs the forward pass of the NN depending on architecture."""
-        x = self.relu(self.fc1(x))
-        x = self.fc2(x)
-
-        return x
+        return self.layer_stack(x)
     
     def act(self, observation, exploit=False):
         """Selects an action with an epsilon-greedy exploration strategy."""
@@ -73,14 +87,14 @@ class DQN(nn.Module):
 
         if self.eps_start < self.eps_end:
             self.eps_start = self.eps_end
-        
-        if random.random() > self.eps_start:
+
+        if random.random() > self.eps_start or exploit==True:
             return_tensor = self.forward(observation) # tensor([1,2])
             return torch.argmax(return_tensor, dim=1).unsqueeze(0)   # Returns tensor size (1 x 1)
                                         
         else:
             return torch.tensor([[random.randint(0, self.n_actions-1)]], device=device) # Returns tensor size (1 x 1)
-                                                
+                                            
 def optimize(dqn, target_dqn, memory, optimizer):
     """This function samples a batch from the replay buffer and optimizes the Q-network."""
     # If we don't have enough transitions stored yet, we don't train.
