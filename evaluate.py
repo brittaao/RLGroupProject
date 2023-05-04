@@ -1,5 +1,5 @@
 import argparse
-
+import pandas as pd
 import gymnasium as gym
 import torch
 
@@ -11,7 +11,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 parser = argparse.ArgumentParser()
 parser.add_argument('--env', choices=['CartPole-v1'], default='CartPole-v1')
 parser.add_argument('--path', type=str, help='Path to stored DQN model.')
-parser.add_argument('--n_eval_episodes', type=int, default=1, help='Number of evaluation episodes.', nargs='?')
+parser.add_argument('--n_eval_episodes', type=int, default=100, help='Number of evaluation episodes.', nargs='?')
 parser.add_argument('--render', dest='render', action='store_true', help='Render the environment.')
 parser.add_argument('--save_video', dest='save_video', action='store_true', help='Save the episodes as video.')
 parser.set_defaults(render=False)
@@ -27,15 +27,17 @@ ENV_CONFIGS = {
 def evaluate_policy(dqn, env, env_config, args, n_episodes, render=False, verbose=False):
     """Runs {n_episodes} episodes to evaluate current policy."""
     total_return = 0
+    episode_returns = []
     for i in range(n_episodes):
         obs, info = env.reset()
         obs = preprocess(obs, env=args.env)
         if dqn.pong:
             obs_stack = torch.cat(env_config['observation_stack_size'] * [obs]).unsqueeze(0).to(device)
         terminated = False
+        truncated = False
         episode_return = 0
 
-        while not terminated:
+        while not terminated and not truncated:
             if render:
                 env.render()
             if dqn.pong:
@@ -55,8 +57,10 @@ def evaluate_policy(dqn, env, env_config, args, n_episodes, render=False, verbos
         
         if verbose:
             print(f'Finished episode {i+1} with a total return of {episode_return}')
+            episode_returns.append(episode_return)
 
-    
+    df = pd.DataFrame(episode_returns) 
+    df.to_csv('target10.csv')
     return total_return / n_episodes
 
 if __name__ == '__main__':

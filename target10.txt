@@ -1,0 +1,46 @@
+Episode 1/1000: 23.0
+Best performance so far! Saving model.
+Episode 26/1000: 24.8
+Best performance so far! Saving model.
+Episode 51/1000: 25.0
+Best performance so far! Saving model.
+Episode 76/1000: 20.8
+Episode 101/1000: 21.0
+Episode 126/1000: 22.0
+Episode 151/1000: 13.4
+Episode 176/1000: 17.6
+Episode 201/1000: 17.0
+Episode 226/1000: 17.0
+Episode 251/1000: 122.2
+Best performance so far! Saving model.
+Episode 276/1000: 52.6
+Episode 301/1000: 50.0
+Episode 326/1000: 50.4
+Episode 351/1000: 75.4
+Episode 376/1000: 102.0
+Episode 401/1000: 114.8
+Episode 426/1000: 245.2
+Best performance so far! Saving model.
+Episode 451/1000: 653.2
+Best performance so far! Saving model.
+Episode 476/1000: 527.8
+Episode 501/1000: 626.4
+Episode 526/1000: 337.2
+Episode 551/1000: 582.6
+Episode 576/1000: 345.4
+Episode 601/1000: 355.2
+Episode 626/1000: 364.2
+Episode 651/1000: 318.8
+Episode 676/1000: 491.0
+Episode 701/1000: 346.6
+Episode 726/1000: 328.8
+Episode 751/1000: 370.0
+Episode 776/1000: 374.0
+Episode 801/1000: 332.8
+Episode 826/1000: 363.0
+Episode 851/1000: 423.8
+Episode 876/1000: 366.2
+Episode 901/1000: 447.0
+Episode 926/1000: 343.8
+Episode 951/1000: 347.6
+Episode 976/1000: 451.0
