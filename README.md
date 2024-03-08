@@ -24,6 +24,7 @@ Below, we showcase the progression of our agent's learning across various episod
 </div>
 
 
+
 ## Project members
 | [Gabriel Arteaga](https://github.com/Gabriel-Arteaga)  |  [Inga Wohlert](https://github.com/IngaKristin)  |  [Alexander Sabelström](https://github.com/Sabelz) | [Britta Oberlack](https://github.com/brittaao) |
 
